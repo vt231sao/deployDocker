@@ -1,59 +1,57 @@
-import crypto from "crypto";
-import {PlanetEntity, CreatePlanetInput, UpdatePlanetInput} from "../schemas/planet.schema";
-import {type} from "node:os";
-const now = new Date();
-export interface PlanetFilters {
-    type?: string,
-    minMassEarth?: number,
-}
+import { Planet, IPlanet } from '../models/planet.model';
+import { CreatePlanetInput, UpdatePlanetInput } from '../schemas/planet.schema';
 
-let storage = new Map<string, PlanetEntity>();
+export interface PlanetFilters {
+    type?: string;
+    minMassEarth?: number;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+}
 
 export const PlanetStorage = {
-    getAll(filters?: PlanetFilters): PlanetEntity[] {
-        let planets = Array.from(storage.values());
-        if (filters?.type) {
-            planets = planets.filter(p => p.type === filters.type);
-        }
+    async getAll(filters?: PlanetFilters): Promise<IPlanet[]> {
+        const query: any = {};
+
+        if (filters?.type) query.type = filters.type;
         if (filters?.minMassEarth !== undefined) {
-            planets = planets.filter(p => p.massEarth >= Number(filters.minMassEarth));
+            query.massEarth = { $gte: Number(filters.minMassEarth) }; // gte >=
         }
-        return planets;
-    },
-    getById(id: string): PlanetEntity | undefined {
-        return storage.get(id);
-    },
-    create( data: CreatePlanetInput): PlanetEntity {
-        const id = crypto.randomUUID()
-        const now = new Date();
 
-        const newPlanet = {
-            ...data,
-            id: id,
-            createdAt: now,
-            updatedAt: now,
+        let mongooseQuery = Planet.find(query);
+
+        if (filters?.sortBy) {
+            mongooseQuery = mongooseQuery.sort(filters.sortBy);
+        } else {
+            mongooseQuery = mongooseQuery.sort('-createdAt');
         }
-        storage.set(id, newPlanet);
-        return newPlanet;
-    },
-    update(id: string, data: UpdatePlanetInput): PlanetEntity | null {
-        const existing = storage.get(id);
-        if (!existing){
-            return null;
-        }
-        const updatedPlanet = {
-            ...existing,
-            ...data,
-            updatedAt: new Date(),
-        }
-        storage.set(id, updatedPlanet);
-        return updatedPlanet;
+
+        // Пагінація
+        const page = filters?.page ? Number(filters.page) : 1;
+        const limit = filters?.limit ? Number(filters.limit) : 10;
+        const skip = (page - 1) * limit;
+
+        mongooseQuery = mongooseQuery.skip(skip).limit(limit);
+
+        return await mongooseQuery.exec();
     },
 
-    delete(id: string): boolean {
-        return storage.delete(id);
+    async getById(id: string): Promise<IPlanet | null> {
+        return await Planet.findById(id).exec();
     },
-    reset(): void {
-        storage.clear();
-    }
-}
+
+    async create(data: CreatePlanetInput): Promise<IPlanet> {
+        const newPlanet = new Planet(data);
+        return await newPlanet.save();
+    },
+
+    async update(id: string, data: UpdatePlanetInput): Promise<IPlanet | null> {
+        return await Planet.findByIdAndUpdate(id, data, { new: true, runValidators: true }).exec();
+    },
+
+    async delete(id: string): Promise<boolean> {
+        const result = await Planet.findByIdAndDelete(id).exec();
+        return result !== null;
+    },
+
+};
