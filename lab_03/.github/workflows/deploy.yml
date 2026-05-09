@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master ] # Запускається при пуші в головну гілку
+    branches: [ main, master, lab_05 ] # Запускається при пуші в головну гілку
 
 jobs:
   test:
