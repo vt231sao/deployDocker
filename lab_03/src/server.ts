@@ -6,15 +6,15 @@ import { connectDB } from './config/database';
 import mongoose from 'mongoose';
 
 const PORT = Number(process.env.PORT) || 3000;
-const HOST = '0.0.0.0';
+const HOST = '0.0.0.0'; // Це дозволить Fly.io бачити застосунок
+
 
 async function startServer() {
     await connectDB();
 
     const server = app.listen(PORT, HOST, () => {
-        console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+        console.log(`🚀 Сервер запущено на http://${HOST}:${PORT}`);
     });
-
     process.on('SIGTERM', gracefulShutdown);
     process.on('SIGINT', gracefulShutdown);
 
